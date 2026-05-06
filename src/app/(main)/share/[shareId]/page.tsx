@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShareableProgressionPlayer } from '@/components/studio/ShareableProgressionPlayer';
@@ -10,6 +10,7 @@ interface PageProps {
 }
 
 async function loadShare(shareId: string) {
+  if (!isSupabaseConfigured()) return null;
   const supabase = createClient();
   const { data: share } = await supabase
     .from('shares')

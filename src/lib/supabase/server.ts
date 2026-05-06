@@ -1,10 +1,16 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import type { Database } from './types';
+
+// NOTE: untyped client. Once you regenerate types via
+//   npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/lib/supabase/types.ts
+// thread the Database generic through here for full type safety on .from(...).select(...).
+export function isSupabaseConfigured(): boolean {
+  return !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+}
 
 export function createClient() {
   const cookieStore = cookies();
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -14,7 +20,7 @@ export function createClient() {
           try {
             cookieStore.set({ name, value, ...options });
           } catch {
-            // Server Component: ignore. Middleware handles refresh.
+            // Server Component: ignore. Middleware refreshes the session cookie.
           }
         },
         remove: (name: string, options: CookieOptions) => {
@@ -30,7 +36,7 @@ export function createClient() {
 }
 
 export function createAdminClient() {
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {

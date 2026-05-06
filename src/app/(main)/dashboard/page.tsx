@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { DeleteProgressionButton } from '@/components/dashboard/DeleteProgressio
 export const metadata = { title: 'Dashboard — ChordCraft' };
 
 export default async function DashboardPage() {
+  if (!isSupabaseConfigured()) redirect('/login?redirectTo=/dashboard');
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?redirectTo=/dashboard');

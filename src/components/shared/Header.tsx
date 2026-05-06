@@ -1,12 +1,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 
 export async function Header() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = isSupabaseConfigured()
+    ? (await createClient().auth.getUser()).data.user
+    : null;
 
   return (
     <header className="border-b border-border">

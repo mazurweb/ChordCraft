@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ManageBillingButton } from '@/components/dashboard/ManageBillingButton';
@@ -8,6 +8,7 @@ import { SignOutButton } from '@/components/dashboard/SignOutButton';
 export const metadata = { title: 'Settings — ChordCraft' };
 
 export default async function SettingsPage() {
+  if (!isSupabaseConfigured()) redirect('/login?redirectTo=/dashboard/settings');
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?redirectTo=/dashboard/settings');

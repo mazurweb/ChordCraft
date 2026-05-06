@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import { ShareableProgressionPlayer } from '@/components/studio/ShareableProgressionPlayer';
 
 interface PageProps {
@@ -7,6 +7,7 @@ interface PageProps {
 }
 
 export default async function EmbedPage({ params }: PageProps) {
+  if (!isSupabaseConfigured()) notFound();
   const supabase = createClient();
   const { data: share } = await supabase
     .from('shares')

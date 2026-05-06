@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!body.success) return new NextResponse(body.error.message, { status: 400 });
 
   const buf = generateProgressionMidi(body.data.progression, body.data.bpm);
-  return new NextResponse(buf, {
+  return new NextResponse(new Uint8Array(buf), {
     headers: {
       'Content-Type': 'audio/midi',
       'Content-Disposition': `attachment; filename="${encodeURIComponent(body.data.name)}.mid"`,
