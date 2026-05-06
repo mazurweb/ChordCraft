@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChordCraft — Music Theory for Producers</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0e1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    
+    .container { max-width: 1200px; margin: 0 auto; }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid #1e293b;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #f97316, #ec4899, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+    
+    .tagline { color: #64748b; font-size: 1rem; }
+    
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr 280px;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    
+    .panel {
+      background: #111827;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    
+    .panel-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #f97316;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+    
+    /* Genre Selector */
+    .genre-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .genre-btn {
+      padding: 0.65rem 0.5rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    
+    .genre-btn:hover {
+      background: #334155;
+      border-color: #f97316;
+    }
+    
+    .genre-btn.active {
+      background: linear-gradient(135deg, #f97316, #ec4899);
+      border-color: transparent;
+      color: white;
+    }
+    
+    .genre-info {
+      background: #0a0e1a;
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+    
+    .genre-info strong {
+      color: #f1f5f9;
+      font-weight: 600;
+    }
+    
+    /* Key & Scale Selector */
+    .selector-group { margin-bottom: 1rem; }
+    
+    .selector-label {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    select {
+      width: 100%;
+      padding: 0.65rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #f1f5f9;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    
+    select:focus {
+      outline: none;
+      border-color: #f97316;
+    }
+    
+    /* Piano */
+    .piano-container {
+      background: #0a0e1a;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+    }
+    
+    .piano {
+      display: flex;
+      position: relative;
+      height: 160px;
+      min-width: 600px;
+      user-select: none;
+    }
+    
+    .key {
+      position: relative;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    
+    .white-key {
+      flex: 1;
+      background: linear-gradient(to bottom, #f8fafc 0%, #e2e8f0 100%);
+      border: 1px solid #334155;
+      border-radius: 0 0 4px 4px;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 0.5rem;
+      font-size: 0.7rem;
+      color: #475569;
+      font-weight: 600;
+    }
+    
+    .white-key:hover { background: linear-gradient(to bottom, #e2e8f0 0%, #cbd5e1 100%); }
+    .white-key.in-scale { background: linear-gradient(to bottom, #fed7aa 0%, #fb923c 100%); }
+    .white-key.root { background: linear-gradient(to bottom, #fca5a5 0%, #ef4444 100%); color: white; }
+    .white-key.in-chord { background: linear-gradient(to bottom, #c4b5fd 0%, #8b5cf6 100%); color: white; }
+    .white-key.playing { transform: scale(0.97); }
+    
+    .black-key {
+      position: absolute;
+      width: 60%;
+      height: 60%;
+      background: linear-gradient(to bottom, #1e293b 0%, #0a0e1a 100%);
+      border: 1px solid #334155;
+      border-radius: 0 0 4px 4px;
+      z-index: 2;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 0.5rem;
+      font-size: 0.65rem;
+      color: #64748b;
+      font-weight: 600;
+    }
+    
+    .black-key:hover { background: linear-gradient(to bottom, #334155 0%, #1e293b 100%); }
+    .black-key.in-scale { background: linear-gradient(to bottom, #ea580c 0%, #c2410c 100%); color: white; }
+    .black-key.root { background: linear-gradient(to bottom, #dc2626 0%, #991b1b 100%); color: white; }
+    .black-key.in-chord { background: linear-gradient(to bottom, #7c3aed 0%, #6d28d9 100%); color: white; }
+    .black-key.playing { transform: scale(0.97); }
+    
+    /* Notes Display */
+    .notes-display {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .note-pill {
+      padding: 0.4rem 0.75rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    .note-pill.root { background: linear-gradient(90deg, #ef4444, #dc2626); border: none; color: white; }
+    
+    .note-pill .interval {
+      display: block;
+      font-size: 0.65rem;
+      color: #94a3b8;
+      margin-top: 0.15rem;
+      text-transform: uppercase;
+    }
+    
+    .note-pill.root .interval { color: rgba(255,255,255,0.8); }
+    
+    /* Chord Builder */
+    .chord-types {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    
+    .chord-type-btn {
+      padding: 0.55rem 0.4rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 5px;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .chord-type-btn:hover { background: #334155; border-color: #8b5cf6; }
+    .chord-type-btn.active { background: linear-gradient(135deg, #8b5cf6, #6366f1); border-color: transparent; color: white; }
+    
+    /* Progression */
+    .progression-display {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    
+    .chord-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      flex: 1;
+      min-width: 80px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .chord-card:hover { background: #334155; border-color: #f97316; transform: translateY(-2px); }
+    .chord-card.playing { background: linear-gradient(135deg, #f97316, #ec4899); border-color: transparent; color: white; }
+    
+    .chord-name { font-size: 1.1rem; font-weight: 700; }
+    .chord-roman { font-size: 0.7rem; color: #94a3b8; margin-top: 0.25rem; text-transform: uppercase; }
+    .chord-card.playing .chord-roman { color: rgba(255,255,255,0.8); }
+    
+    /* Buttons */
+    .btn {
+      padding: 0.65rem 1.25rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #f1f5f9;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .btn:hover { background: #334155; }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #f97316, #ec4899);
+      border: none;
+      color: white;
+    }
+    
+    .btn-primary:hover { opacity: 0.9; }
+    
+    .controls-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .tempo-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 1px solid #334155;
+    }
+    
+    .tempo-control label { font-size: 0.85rem; color: #94a3b8; }
+    .tempo-control input { width: 60px; padding: 0.25rem 0.5rem; background: #0a0e1a; border: 1px solid #334155; border-radius: 4px; color: white; font-size: 0.85rem; }
+    
+    /* Suggested progressions */
+    .suggested-progression {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .suggested-progression:hover { background: #334155; border-color: #f97316; }
+    
+    .progression-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 0.25rem;
+    }
+    
+    .progression-chords {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+    
+    .info-box {
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(236, 72, 153, 0.1));
+      border-left: 3px solid #f97316;
+      padding: 0.75rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+      margin-top: 1rem;
+    }
+    
+    .footer {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #1e293b;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎹 ChordCraft</h1>
+      <p class="tagline">Music theory built for modern producers — Pick a genre. Get the magic.</p>
+    </div>
+    
+    <div class="layout">
+      <!-- LEFT PANEL: Genre & Key -->
+      <div class="panel">
+        <div class="panel-title">Genre</div>
+        <div class="genre-grid" id="genreGrid"></div>
+        <div class="genre-info" id="genreInfo"></div>
+        
+        <div style="margin-top: 1.5rem;">
+          <div class="selector-group">
+            <div class="selector-label">Key</div>
+            <select id="keySelector"></select>
+          </div>
+          
+          <div class="selector-group">
+            <div class="selector-label">Scale / Mode</div>
+            <select id="scaleSelector">
+              <option value="major">Major</option>
+              <option value="minor" selected>Minor (Natural)</option>
+              <option value="dorian">Dorian</option>
+              <option value="phrygian">Phrygian</option>
+              <option value="lydian">Lydian</option>
+              <option value="mixolydian">Mixolydian</option>
+              <option value="locrian">Locrian</option>
+              <option value="harmonic_minor">Harmonic Minor</option>
+              <option value="melodic_minor">Melodic Minor</option>
+              <option value="pentatonic_major">Major Pentatonic</option>
+              <option value="pentatonic_minor">Minor Pentatonic</option>
+              <option value="blues">Blues</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- CENTER: Piano & Chord Builder -->
+      <div class="panel">
+        <div class="panel-title">Piano & Chord Builder</div>
+        
+        <div class="piano-container">
+          <div class="piano" id="piano"></div>
+        </div>
+        
+        <div class="notes-display" id="notesDisplay"></div>
+        
+        <div class="panel-title" style="margin-top: 1.5rem;">Build a Chord</div>
+        <div class="chord-types" id="chordTypes">
+          <button class="chord-type-btn active" data-type="maj">Major</button>
+          <button class="chord-type-btn" data-type="min">Minor</button>
+          <button class="chord-type-btn" data-type="dim">Dim</button>
+          <button class="chord-type-btn" data-type="aug">Aug</button>
+          <button class="chord-type-btn" data-type="sus2">Sus2</button>
+          <button class="chord-type-btn" data-type="sus4">Sus4</button>
+          <button class="chord-type-btn" data-type="maj7">Maj7</button>
+          <button class="chord-type-btn" data-type="min7">Min7</button>
+          <button class="chord-type-btn" data-type="dom7">Dom7</button>
+          <button class="chord-type-btn" data-type="maj9">Maj9</button>
+          <button class="chord-type-btn" data-type="min9">Min9</button>
+          <button class="chord-type-btn" data-type="add9">Add9</button>
+        </div>
+        
+        <div class="controls-row">
+          <button class="btn btn-primary" onclick="playCurrentChord()">▶ Play Chord</button>
+          <button class="btn" onclick="clearChord()">Clear</button>
+          <span style="color: #64748b; font-size: 0.85rem; margin-left: auto;" id="currentChordName">Select a chord</span>
+        </div>
+        
+        <div class="info-box">
+          💡 <strong>Tip:</strong> Click any note on the piano to set it as the chord root. Click a chord type below. Numbers like "7" and "9" add color tones for jazz/lo-fi vibes.
+        </div>
+      </div>
+      
+      <!-- RIGHT PANEL: Progressions -->
+      <div class="panel">
+        <div class="panel-title">Suggested Progressions</div>
+        <div id="progressionList"></div>
+        
+        <div class="panel-title" style="margin-top: 1.5rem;">Active Progression</div>
+        <div class="progression-display" id="activeProgression">
+          <div style="color: #64748b; font-size: 0.85rem; padding: 1rem; text-align: center;">
+            Click a progression above to load it
+          </div>
+        </div>
+        
+        <div class="controls-row">
+          <button class="btn btn-primary" onclick="playProgression()" id="playBtn">▶ Play Loop</button>
+          <div class="tempo-control">
+            <label>BPM:</label>
+            <input type="number" id="bpmInput" value="90" min="60" max="200">
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      Built with Tone.js • Genre-first music theory • <strong>ChordCraft</strong> MVP v0.1
+    </div>
+  </div>
+  
+  <script>
+    // ====== MUSIC THEORY DATA ======
+    
+    const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    
+    const SCALE_PATTERNS = {
+      major: [0, 2, 4, 5, 7, 9, 11],
+      minor: [0, 2, 3, 5, 7, 8, 10],
+      dorian: [0, 2, 3, 5, 7, 9, 10],
+      phrygian: [0, 1, 3, 5, 7, 8, 10],
+      lydian: [0, 2, 4, 6, 7, 9, 11],
+      mixolydian: [0, 2, 4, 5, 7, 9, 10],
+      locrian: [0, 1, 3, 5, 6, 8, 10],
+      harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+      melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+      pentatonic_major: [0, 2, 4, 7, 9],
+      pentatonic_minor: [0, 3, 5, 7, 10],
+      blues: [0, 3, 5, 6, 7, 10]
+    };
+    
+    const INTERVAL_NAMES = {
+      0: 'Root', 1: 'b2', 2: '2nd', 3: 'b3', 4: '3rd', 5: '4th',
+      6: 'b5', 7: '5th', 8: 'b6', 9: '6th', 10: 'b7', 11: '7th'
+    };
+    
+    const CHORD_PATTERNS = {
+      maj: [0, 4, 7],
+      min: [0, 3, 7],
+      dim: [0, 3, 6],
+      aug: [0, 4, 8],
+      sus2: [0, 2, 7],
+      sus4: [0, 5, 7],
+      maj7: [0, 4, 7, 11],
+      min7: [0, 3, 7, 10],
+      dom7: [0, 4, 7, 10],
+      maj9: [0, 4, 7, 11, 14],
+      min9: [0, 3, 7, 10, 14],
+      add9: [0, 4, 7, 14]
+    };
+    
+    const GENRES = {
+      phonk: {
+        name: 'Phonk',
+        keys: ['Dm', 'F#m', 'Gm', 'Am', 'Bm'],
+        bpm: 90,
+        scale: 'minor',
+        defaultKey: 'D',
+        mood: 'Dark, gritty, hypnotic',
+        scales: ['minor', 'phrygian'],
+        progressions: [
+          { name: 'Classic Phonk', chords: ['Dm', 'Bb', 'F', 'C'], roman: ['i', 'VI', 'III', 'VII'] },
+          { name: 'Memphis Mood', chords: ['Dm', 'Gm', 'C', 'F'], roman: ['i', 'iv', 'VII', 'III'] },
+          { name: 'Dark Loop', chords: ['Dm', 'A', 'Dm', 'Gm'], roman: ['i', 'V', 'i', 'iv'] }
+        ]
+      },
+      drift_phonk: {
+        name: 'Drift Phonk',
+        keys: ['F#m', 'Gm', 'Am', 'Bm', 'C#m'],
+        bpm: 150,
+        scale: 'minor',
+        defaultKey: 'F#',
+        mood: 'Aggressive, fast, chaotic',
+        scales: ['minor', 'phrygian', 'harmonic_minor'],
+        progressions: [
+          { name: 'Drift Anthem', chords: ['F#m', 'E', 'D', 'C#'], roman: ['i', 'VII', 'VI', 'V'] },
+          { name: 'Aggressive', chords: ['F#m', 'D', 'B', 'C#'], roman: ['i', 'VI', 'iv', 'V'] },
+          { name: 'Tunnel Vision', chords: ['F#m', 'C#m', 'D', 'E'], roman: ['i', 'v', 'VI', 'VII'] }
+        ]
+      },
+      trap: {
+        name: 'Trap',
+        keys: ['Cm', 'Dm', 'Em', 'F#m', 'Gm'],
+        bpm: 140,
+        scale: 'minor',
+        defaultKey: 'C',
+        mood: 'Hard, melodic, modern',
+        scales: ['minor', 'harmonic_minor', 'phrygian'],
+        progressions: [
+          { name: 'Trap Standard', chords: ['Cm', 'Ab', 'Eb', 'Bb'], roman: ['i', 'VI', 'III', 'VII'] },
+          { name: 'Drill Vibe', chords: ['Cm', 'Gm', 'Ab', 'Bb'], roman: ['i', 'v', 'VI', 'VII'] },
+          { name: 'Emotional', chords: ['Cm', 'Eb', 'Ab', 'G'], roman: ['i', 'III', 'VI', 'V'] }
+        ]
+      },
+      lofi: {
+        name: 'Lo-fi',
+        keys: ['Cmaj', 'Fmaj', 'Gmaj', 'Am', 'Em'],
+        bpm: 75,
+        scale: 'major',
+        defaultKey: 'C',
+        mood: 'Relaxed, jazzy, nostalgic',
+        scales: ['major', 'dorian', 'mixolydian'],
+        progressions: [
+          { name: 'Jazz Lo-fi', chords: ['Cmaj7', 'Am7', 'Dm7', 'G7'], roman: ['Imaj7', 'vi7', 'ii7', 'V7'] },
+          { name: 'Chill Vibes', chords: ['Fmaj7', 'Em7', 'Dm7', 'Cmaj7'], roman: ['IVmaj7', 'iii7', 'ii7', 'Imaj7'] },
+          { name: 'Sleepy', chords: ['Cmaj7', 'Em7', 'Am7', 'Fmaj7'], roman: ['Imaj7', 'iii7', 'vi7', 'IVmaj7'] }
+        ]
+      },
+      house: {
+        name: 'House',
+        keys: ['Am', 'Cmaj', 'Dm', 'Em', 'Gmaj'],
+        bpm: 124,
+        scale: 'minor',
+        defaultKey: 'A',
+        mood: 'Groovy, uplifting, danceable',
+        scales: ['minor', 'major', 'dorian'],
+        progressions: [
+          { name: 'House Classic', chords: ['Am', 'F', 'C', 'G'], roman: ['vi', 'IV', 'I', 'V'] },
+          { name: 'Deep House', chords: ['Am7', 'Dm7', 'Em7', 'Am7'], roman: ['i7', 'iv7', 'v7', 'i7'] },
+          { name: 'Tech House', chords: ['Am', 'Em', 'F', 'C'], roman: ['vi', 'iii', 'IV', 'I'] }
+        ]
+      },
+      rnb: {
+        name: 'R&B',
+        keys: ['Cmaj', 'Dm', 'Fmaj', 'Am', 'Em'],
+        bpm: 75,
+        scale: 'major',
+        defaultKey: 'C',
+        mood: 'Smooth, soulful, romantic',
+        scales: ['major', 'minor', 'dorian'],
+        progressions: [
+          { name: 'Smooth R&B', chords: ['Cmaj7', 'Em7', 'Am7', 'Fmaj7'], roman: ['Imaj7', 'iii7', 'vi7', 'IVmaj7'] },
+          { name: 'Neo-Soul', chords: ['Cmaj9', 'Fmaj9', 'Em9', 'Dm9'], roman: ['Imaj9', 'IVmaj9', 'iii9', 'ii9'] },
+          { name: 'Sensual', chords: ['Am7', 'Dm7', 'Gmaj7', 'Cmaj7'], roman: ['vi7', 'ii7', 'V7', 'Imaj7'] }
+        ]
+      },
+      pop: {
+        name: 'Pop',
+        keys: ['Cmaj', 'Gmaj', 'Dmaj', 'Am', 'Em'],
+        bpm: 110,
+        scale: 'major',
+        defaultKey: 'C',
+        mood: 'Catchy, uplifting, accessible',
+        scales: ['major', 'minor'],
+        progressions: [
+          { name: 'Pop Standard', chords: ['C', 'G', 'Am', 'F'], roman: ['I', 'V', 'vi', 'IV'] },
+          { name: 'Sad Pop', chords: ['Am', 'F', 'C', 'G'], roman: ['vi', 'IV', 'I', 'V'] },
+          { name: 'Anthem', chords: ['C', 'F', 'G', 'C'], roman: ['I', 'IV', 'V', 'I'] }
+        ]
+      },
+      rock: {
+        name: 'Rock',
+        keys: ['Em', 'Am', 'Dm', 'Gmaj', 'Amaj'],
+        bpm: 120,
+        scale: 'minor',
+        defaultKey: 'E',
+        mood: 'Powerful, driving, raw',
+        scales: ['minor', 'major', 'mixolydian'],
+        progressions: [
+          { name: 'Rock Anthem', chords: ['Em', 'C', 'G', 'D'], roman: ['i', 'VI', 'III', 'VII'] },
+          { name: 'Power', chords: ['Em', 'Am', 'D', 'G'], roman: ['i', 'iv', 'VII', 'III'] },
+          { name: 'Rebel', chords: ['Em', 'D', 'C', 'B'], roman: ['i', 'VII', 'VI', 'V'] }
+        ]
+      },
+      drill: {
+        name: 'Drill',
+        keys: ['F#m', 'Gm', 'Am', 'Bm', 'C#m'],
+        bpm: 142,
+        scale: 'minor',
+        defaultKey: 'F#',
+        mood: 'Dark, menacing, raw',
+        scales: ['minor', 'phrygian', 'harmonic_minor'],
+        progressions: [
+          { name: 'UK Drill', chords: ['F#m', 'D', 'A', 'C#'], roman: ['i', 'VI', 'III', 'V'] },
+          { name: 'Brooklyn', chords: ['F#m', 'C#m', 'D', 'A'], roman: ['i', 'v', 'VI', 'III'] },
+          { name: 'Sample Drill', chords: ['F#m', 'E', 'D', 'C#m'], roman: ['i', 'VII', 'VI', 'v'] }
+        ]
+      },
+      jazz: {
+        name: 'Jazz',
+        keys: ['Cmaj', 'Fmaj', 'Bbmaj', 'Dm', 'Gm'],
+        bpm: 120,
+        scale: 'major',
+        defaultKey: 'C',
+        mood: 'Sophisticated, complex, expressive',
+        scales: ['major', 'dorian', 'mixolydian', 'melodic_minor'],
+        progressions: [
+          { name: 'ii-V-I', chords: ['Dm7', 'G7', 'Cmaj7', 'Cmaj7'], roman: ['ii7', 'V7', 'Imaj7', 'Imaj7'] },
+          { name: 'Bird Blues', chords: ['Cmaj7', 'F7', 'Em7', 'A7'], roman: ['Imaj7', 'IV7', 'iii7', 'VI7'] },
+          { name: 'Modal', chords: ['Cmaj9', 'Dm9', 'Em9', 'Fmaj9'], roman: ['Imaj9', 'ii9', 'iii9', 'IVmaj9'] }
+        ]
+      },
+      ambient: {
+        name: 'Ambient',
+        keys: ['Cmaj', 'Dmaj', 'Em', 'Am', 'Gmaj'],
+        bpm: 80,
+        scale: 'major',
+        defaultKey: 'C',
+        mood: 'Atmospheric, ethereal, peaceful',
+        scales: ['major', 'lydian', 'dorian'],
+        progressions: [
+          { name: 'Floating', chords: ['Cmaj7', 'Fmaj7', 'Cmaj7', 'Fmaj7'], roman: ['Imaj7', 'IVmaj7', 'Imaj7', 'IVmaj7'] },
+          { name: 'Suspended', chords: ['Csus2', 'Fsus2', 'Gsus2', 'Csus2'], roman: ['Isus', 'IVsus', 'Vsus', 'Isus'] },
+          { name: 'Drone', chords: ['Cmaj9', 'Cmaj9', 'Fmaj9', 'Cmaj9'], roman: ['Imaj9', 'Imaj9', 'IVmaj9', 'Imaj9'] }
+        ]
+      },
+      techno: {
+        name: 'Techno',
+        keys: ['Am', 'Cm', 'Dm', 'Em', 'F#m'],
+        bpm: 130,
+        scale: 'minor',
+        defaultKey: 'A',
+        mood: 'Hypnotic, driving, mechanical',
+        scales: ['minor', 'phrygian'],
+        progressions: [
+          { name: 'Detroit', chords: ['Am', 'Dm', 'Em', 'Am'], roman: ['i', 'iv', 'v', 'i'] },
+          { name: 'Berlin Hard', chords: ['Am', 'F', 'Dm', 'Em'], roman: ['i', 'VI', 'iv', 'v'] },
+          { name: 'Minimal', chords: ['Am', 'Am', 'Em', 'Em'], roman: ['i', 'i', 'v', 'v'] }
+        ]
+      }
+    };
+    
+    // ====== STATE ======
+    
+    let state = {
+      genre: 'phonk',
+      key: 'D',
+      scale: 'minor',
+      chordRoot: null,
+      chordType: 'maj',
+      progression: [],
+      isPlaying: false,
+      bpm: 90,
+      currentChordIndex: 0
+    };
+    
+    // ====== AUDIO ======
+    
+    let synth = null;
+    let chordSynth = null;
+    let progressionLoop = null;
+    
+    function initAudio() {
+      if (!synth) {
+        synth = new Tone.Synth({
+          oscillator: { type: 'triangle' },
+          envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+        }).toDestination();
+        
+        chordSynth = new Tone.PolySynth(Tone.Synth, {
+          oscillator: { type: 'triangle' },
+          envelope: { attack: 0.05, decay: 0.2, sustain: 0.5, release: 1.5 }
+        }).toDestination();
+        chordSynth.volume.value = -8;
+      }
+    }
+    
+    function playNote(note, octave = 4, duration = 0.3) {
+      initAudio();
+      Tone.start();
+      synth.triggerAttackRelease(note + octave, duration);
+    }
+    
+    function playChord(notes, octave = 3, duration = 1) {
+      initAudio();
+      Tone.start();
+      const noteNames = notes.map(n => n + octave);
+      chordSynth.triggerAttackRelease(noteNames, duration);
+    }
+    
+    // ====== MUSIC THEORY HELPERS ======
+    
+    function getNoteIndex(note) {
+      return NOTES.indexOf(note);
+    }
+    
+    function getScaleNotes(rootNote, scale) {
+      const rootIndex = getNoteIndex(rootNote);
+      const pattern = SCALE_PATTERNS[scale];
+      return pattern.map(interval => NOTES[(rootIndex + interval) % 12]);
+    }
+    
+    function getChordNotes(rootNote, chordType) {
+      const rootIndex = getNoteIndex(rootNote);
+      const pattern = CHORD_PATTERNS[chordType];
+      return pattern.map(interval => NOTES[(rootIndex + interval) % 12]);
+    }
+    
+    function parseChordName(chordStr) {
+      const match = chordStr.match(/^([A-G][#b]?)(.*)$/);
+      if (!match) return null;
+      let root = match[1];
+      let suffix = match[2].toLowerCase();
+      
+      // Normalize flats
+      if (root.endsWith('b')) {
+        const flatMap = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' };
+        root = flatMap[root] || root;
+      }
+      
+      let type = 'maj';
+      if (suffix.includes('maj9')) type = 'maj9';
+      else if (suffix.includes('maj7')) type = 'maj7';
+      else if (suffix.includes('m9')) type = 'min9';
+      else if (suffix.includes('m7')) type = 'min7';
+      else if (suffix.includes('9')) type = 'dom7';
+      else if (suffix.includes('7')) type = 'dom7';
+      else if (suffix.includes('m')) type = 'min';
+      else if (suffix.includes('dim')) type = 'dim';
+      else if (suffix.includes('aug')) type = 'aug';
+      else if (suffix.includes('sus2')) type = 'sus2';
+      else if (suffix.includes('sus4')) type = 'sus4';
+      
+      return { root, type };
+    }
+    
+    // ====== UI RENDERING ======
+    
+    function renderGenres() {
+      const grid = document.getElementById('genreGrid');
+      grid.innerHTML = '';
+      Object.entries(GENRES).forEach(([key, genre]) => {
+        const btn = document.createElement('button');
+        btn.className = 'genre-btn' + (state.genre === key ? ' active' : '');
+        btn.textContent = genre.name;
+        btn.onclick = () => selectGenre(key);
+        grid.appendChild(btn);
+      });
+    }
+    
+    function renderGenreInfo() {
+      const genre = GENRES[state.genre];
+      document.getElementById('genreInfo').innerHTML = `
+        <strong>BPM:</strong> ${genre.bpm}<br/>
+        <strong>Mood:</strong> ${genre.mood}<br/>
+        <strong>Common keys:</strong> ${genre.keys.join(', ')}<br/>
+        <strong>Best scales:</strong> ${genre.scales.join(', ')}
+      `;
+    }
+    
+    function renderKeySelector() {
+      const select = document.getElementById('keySelector');
+      select.innerHTML = '';
+      NOTES.forEach(note => {
+        const opt = document.createElement('option');
+        opt.value = note;
+        opt.textContent = note;
+        if (note === state.key) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+    
+    function renderPiano() {
+      const piano = document.getElementById('piano');
+      piano.innerHTML = '';
+      
+      const scaleNotes = getScaleNotes(state.key, state.scale);
+      const chordNotes = state.chordRoot ? getChordNotes(state.chordRoot, state.chordType) : [];
+      
+      const whiteNotePositions = [
+        { note: 'C', octave: 3 }, { note: 'D', octave: 3 }, { note: 'E', octave: 3 },
+        { note: 'F', octave: 3 }, { note: 'G', octave: 3 }, { note: 'A', octave: 3 },
+        { note: 'B', octave: 3 },
+        { note: 'C', octave: 4 }, { note: 'D', octave: 4 }, { note: 'E', octave: 4 },
+        { note: 'F', octave: 4 }, { note: 'G', octave: 4 }, { note: 'A', octave: 4 },
+        { note: 'B', octave: 4 },
+        { note: 'C', octave: 5 }, { note: 'D', octave: 5 }, { note: 'E', octave: 5 },
+        { note: 'F', octave: 5 }, { note: 'G', octave: 5 }, { note: 'A', octave: 5 },
+        { note: 'B', octave: 5 }
+      ];
+      
+      const blackNotePositions = [
+        { note: 'C#', octave: 3, after: 0 }, { note: 'D#', octave: 3, after: 1 },
+        { note: 'F#', octave: 3, after: 3 }, { note: 'G#', octave: 3, after: 4 },
+        { note: 'A#', octave: 3, after: 5 },
+        { note: 'C#', octave: 4, after: 7 }, { note: 'D#', octave: 4, after: 8 },
+        { note: 'F#', octave: 4, after: 10 }, { note: 'G#', octave: 4, after: 11 },
+        { note: 'A#', octave: 4, after: 12 },
+        { note: 'C#', octave: 5, after: 14 }, { note: 'D#', octave: 5, after: 15 },
+        { note: 'F#', octave: 5, after: 17 }, { note: 'G#', octave: 5, after: 18 },
+        { note: 'A#', octave: 5, after: 19 }
+      ];
+      
+      whiteNotePositions.forEach((pos, idx) => {
+        const key = document.createElement('div');
+        key.className = 'key white-key';
+        key.dataset.note = pos.note;
+        key.dataset.octave = pos.octave;
+        
+        if (pos.note === state.key) key.classList.add('root');
+        else if (scaleNotes.includes(pos.note)) key.classList.add('in-scale');
+        if (chordNotes.includes(pos.note)) key.classList.add('in-chord');
+        
+        key.innerHTML = `<span>${pos.note}</span>`;
+        key.onclick = () => {
+          playNote(pos.note, pos.octave);
+          setChordRoot(pos.note);
+          key.classList.add('playing');
+          setTimeout(() => key.classList.remove('playing'), 200);
+        };
+        piano.appendChild(key);
+      });
+      
+      blackNotePositions.forEach(pos => {
+        const key = document.createElement('div');
+        key.className = 'key black-key';
+        key.dataset.note = pos.note;
+        key.dataset.octave = pos.octave;
+        
+        const leftPercent = ((pos.after + 0.65) / whiteNotePositions.length) * 100;
+        key.style.left = leftPercent + '%';
+        
+        if (pos.note === state.key) key.classList.add('root');
+        else if (scaleNotes.includes(pos.note)) key.classList.add('in-scale');
+        if (chordNotes.includes(pos.note)) key.classList.add('in-chord');
+        
+        key.innerHTML = `<span>${pos.note}</span>`;
+        key.onclick = (e) => {
+          e.stopPropagation();
+          playNote(pos.note, pos.octave);
+          setChordRoot(pos.note);
+          key.classList.add('playing');
+          setTimeout(() => key.classList.remove('playing'), 200);
+        };
+        piano.appendChild(key);
+      });
+    }
+    
+    function renderNotesDisplay() {
+      const scaleNotes = getScaleNotes(state.key, state.scale);
+      const display = document.getElementById('notesDisplay');
+      display.innerHTML = '';
+      
+      const pattern = SCALE_PATTERNS[state.scale];
+      scaleNotes.forEach((note, idx) => {
+        const pill = document.createElement('div');
+        pill.className = 'note-pill' + (idx === 0 ? ' root' : '');
+        pill.innerHTML = `${note}<span class="interval">${INTERVAL_NAMES[pattern[idx]] || ''}</span>`;
+        display.appendChild(pill);
+      });
+    }
+    
+    function renderProgressions() {
+      const list = document.getElementById('progressionList');
+      list.innerHTML = '';
+      
+      const genre = GENRES[state.genre];
+      genre.progressions.forEach((prog, idx) => {
+        const div = document.createElement('div');
+        div.className = 'suggested-progression';
+        div.innerHTML = `
+          <div class="progression-name">${prog.name}</div>
+          <div class="progression-chords">${prog.chords.join(' → ')}</div>
+        `;
+        div.onclick = () => loadProgression(prog);
+        list.appendChild(div);
+      });
+    }
+    
+    function renderActiveProgression() {
+      const display = document.getElementById('activeProgression');
+      if (state.progression.length === 0) {
+        display.innerHTML = '<div style="color: #64748b; font-size: 0.85rem; padding: 1rem; text-align: center;">Click a progression above to load it</div>';
+        return;
+      }
+      
+      display.innerHTML = '';
+      state.progression.forEach((chord, idx) => {
+        const card = document.createElement('div');
+        card.className = 'chord-card' + (state.isPlaying && idx === state.currentChordIndex ? ' playing' : '');
+        card.dataset.idx = idx;
+        card.innerHTML = `
+          <div class="chord-name">${chord.chord}</div>
+          <div class="chord-roman">${chord.roman || ''}</div>
+        `;
+        card.onclick = () => {
+          const parsed = parseChordName(chord.chord);
+          if (parsed) {
+            const notes = getChordNotes(parsed.root, parsed.type);
+            playChord(notes);
+          }
+        };
+        display.appendChild(card);
+      });
+    }
+    
+    // ====== EVENT HANDLERS ======
+    
+    function selectGenre(genre) {
+      state.genre = genre;
+      const g = GENRES[genre];
+      state.bpm = g.bpm;
+      state.scale = g.scale;
+      state.key = g.defaultKey;
+      
+      document.getElementById('bpmInput').value = g.bpm;
+      document.getElementById('scaleSelector').value = g.scale;
+      
+      renderGenres();
+      renderGenreInfo();
+      renderKeySelector();
+      renderPiano();
+      renderNotesDisplay();
+      renderProgressions();
+      
+      state.progression = [];
+      renderActiveProgression();
+    }
+    
+    function setChordRoot(note) {
+      state.chordRoot = note;
+      renderPiano();
+      updateChordName();
+    }
+    
+    function selectChordType(type) {
+      state.chordType = type;
+      document.querySelectorAll('.chord-type-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.chord-type-btn[data-type="${type}"]`).classList.add('active');
+      renderPiano();
+      updateChordName();
+    }
+    
+    function updateChordName() {
+      const display = document.getElementById('currentChordName');
+      if (state.chordRoot) {
+        const suffixes = {
+          maj: '', min: 'm', dim: 'dim', aug: 'aug',
+          sus2: 'sus2', sus4: 'sus4',
+          maj7: 'maj7', min7: 'm7', dom7: '7',
+          maj9: 'maj9', min9: 'm9', add9: 'add9'
+        };
+        const name = state.chordRoot + (suffixes[state.chordType] || '');
+        const notes = getChordNotes(state.chordRoot, state.chordType);
+        display.innerHTML = `<strong style="color: #f97316;">${name}</strong> — ${notes.join(', ')}`;
+      } else {
+        display.textContent = 'Select a note';
+      }
+    }
+    
+    function playCurrentChord() {
+      if (state.chordRoot) {
+        const notes = getChordNotes(state.chordRoot, state.chordType);
+        playChord(notes);
+      }
+    }
+    
+    function clearChord() {
+      state.chordRoot = null;
+      state.chordType = 'maj';
+      document.querySelectorAll('.chord-type-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector('.chord-type-btn[data-type="maj"]').classList.add('active');
+      renderPiano();
+      updateChordName();
+    }
+    
+    function loadProgression(prog) {
+      state.progression = prog.chords.map((chord, idx) => ({
+        chord,
+        roman: prog.roman ? prog.roman[idx] : ''
+      }));
+      renderActiveProgression();
+    }
+    
+    function playProgression() {
+      if (state.progression.length === 0) return;
+      
+      if (state.isPlaying) {
+        clearInterval(progressionLoop);
+        state.isPlaying = false;
+        state.currentChordIndex = 0;
+        document.getElementById('playBtn').innerHTML = '▶ Play Loop';
+        renderActiveProgression();
+        return;
+      }
+      
+      initAudio();
+      Tone.start();
+      
+      state.isPlaying = true;
+      state.currentChordIndex = 0;
+      state.bpm = parseInt(document.getElementById('bpmInput').value);
+      document.getElementById('playBtn').innerHTML = '⏸ Stop Loop';
+      
+      const intervalMs = (60 / state.bpm) * 1000 * 2; // 2 beats per chord
+      
+      const playStep = () => {
+        const chord = state.progression[state.currentChordIndex];
+        const parsed = parseChordName(chord.chord);
+        if (parsed) {
+          const notes = getChordNotes(parsed.root, parsed.type);
+          playChord(notes, 3, intervalMs / 1000 * 0.9);
+        }
+        renderActiveProgression();
+        state.currentChordIndex = (state.currentChordIndex + 1) % state.progression.length;
+      };
+      
+      playStep();
+      progressionLoop = setInterval(playStep, intervalMs);
+    }
+    
+    // ====== INITIALIZATION ======
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      renderGenres();
+      renderGenreInfo();
+      renderKeySelector();
+      renderPiano();
+      renderNotesDisplay();
+      renderProgressions();
+      
+      document.getElementById('keySelector').addEventListener('change', (e) => {
+        state.key = e.target.value;
+        renderPiano();
+        renderNotesDisplay();
+      });
+      
+      document.getElementById('scaleSelector').addEventListener('change', (e) => {
+        state.scale = e.target.value;
+        renderPiano();
+        renderNotesDisplay();
+      });
+      
+      document.querySelectorAll('.chord-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => selectChordType(btn.dataset.type));
+      });
+      
+      document.getElementById('bpmInput').addEventListener('change', (e) => {
+        state.bpm = parseInt(e.target.value);
+      });
+    });
+  </script>
+</body>
+</html>
