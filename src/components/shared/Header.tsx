@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import { auth } from '@/lib/auth';
+import { isDbConfigured } from '@/lib/db/client';
 
 export async function Header() {
-  const user = isSupabaseConfigured()
-    ? (await createClient().auth.getUser()).data.user
-    : null;
+  const session = isDbConfigured() ? await auth() : null;
+  const user = session?.user ?? null;
 
   return (
     <header className="border-b border-border">
@@ -16,32 +16,19 @@ export async function Header() {
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           <Link href="/studio">
-            <Button variant="ghost" size="sm">
-              Studio
-            </Button>
-          </Link>
-          <Link href="/pricing">
-            <Button variant="ghost" size="sm">
-              Pricing
-            </Button>
+            <Button variant="ghost" size="sm">Studio</Button>
           </Link>
           {user ? (
             <Link href="/dashboard">
-              <Button variant="outline" size="sm">
-                Dashboard
-              </Button>
+              <Button variant="outline" size="sm">Dashboard</Button>
             </Link>
           ) : (
             <>
               <Link href="/login">
-                <Button variant="ghost" size="sm">
-                  Sign in
-                </Button>
+                <Button variant="ghost" size="sm">Sign in</Button>
               </Link>
               <Link href="/signup">
-                <Button variant="gradient" size="sm">
-                  Sign up
-                </Button>
+                <Button variant="gradient" size="sm">Sign up</Button>
               </Link>
             </>
           )}

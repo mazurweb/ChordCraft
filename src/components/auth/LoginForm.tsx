@@ -6,18 +6,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createClient } from '@/lib/supabase/client';
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(1),
 });
 type FormValues = z.infer<typeof schema>;
 
-export function LoginForm() {
+export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const redirectTo = params.get('redirectTo') ?? '/dashboard';
@@ -28,22 +28,17 @@ export function LoginForm() {
 
   const onSubmit = async (values: FormValues) => {
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword(values);
-    if (error) {
-      setError(error.message);
+    const res = await signIn('credentials', {
+      email: values.email,
+      password: values.password,
+      redirect: false,
+    });
+    if (res?.error) {
+      setError('Invalid email or password');
       return;
     }
     router.push(redirectTo);
     router.refresh();
-  };
-
-  const oauth = async () => {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}` },
-    });
   };
 
   return (
@@ -60,14 +55,19 @@ export function LoginForm() {
       <Button type="submit" variant="gradient" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? 'Signing in…' : 'Sign in'}
       </Button>
-      <Button type="button" variant="outline" className="w-full" onClick={oauth}>
-        Continue with Google
-      </Button>
+      {googleEnabled && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => signIn('google', { callbackUrl: redirectTo })}
+        >
+          Continue with Google
+        </Button>
+      )}
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{' '}
-        <Link href="/signup" className="text-brand-orange">
-          Sign up
-        </Link>
+        <Link href="/signup" className="text-brand-orange">Sign up</Link>
       </p>
     </form>
   );

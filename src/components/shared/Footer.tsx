@@ -8,7 +8,6 @@ export function Footer() {
           Built with Tone.js • <strong>ChordCraft</strong>
         </div>
         <nav className="flex gap-4">
-          <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
           <Link href="/studio" className="hover:text-foreground">Studio</Link>
           <a href="https://chordcraft.app" className="hover:text-foreground">chordcraft.app</a>
         </nav>

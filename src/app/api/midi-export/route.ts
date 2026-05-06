@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
+import { auth } from '@/lib/auth';
+import { isDbConfigured } from '@/lib/db/client';
 import { generateProgressionMidi } from '@/lib/midi/exporter';
-import { createClient } from '@/lib/supabase/server';
 
 const schema = z.object({
   progression: z.object({ chords: z.array(z.string()).min(1).max(32) }),
@@ -10,18 +11,9 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new NextResponse('Sign in to export MIDI', { status: 401 });
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan')
-    .eq('id', user.id)
-    .single();
-  if (!profile || profile.plan === 'free') {
-    return new NextResponse('MIDI export requires the Pro plan', { status: 402 });
-  }
+  if (!isDbConfigured()) return new NextResponse('DB not configured', { status: 503 });
+  const session = await auth();
+  if (!session?.user?.id) return new NextResponse('Sign in to export MIDI', { status: 401 });
 
   const body = schema.safeParse(await req.json());
   if (!body.success) return new NextResponse(body.error.message, { status: 400 });

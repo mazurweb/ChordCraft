@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import { eq } from 'drizzle-orm';
+import { db, isDbConfigured } from '@/lib/db/client';
+import { progressions, shares } from '@/lib/db/schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShareableProgressionPlayer } from '@/components/studio/ShareableProgressionPlayer';
@@ -10,21 +12,21 @@ interface PageProps {
 }
 
 async function loadShare(shareId: string) {
-  if (!isSupabaseConfigured()) return null;
-  const supabase = createClient();
-  const { data: share } = await supabase
-    .from('shares')
-    .select('*')
-    .eq('share_id', shareId)
-    .single();
+  if (!isDbConfigured()) return null;
+
+  const [share] = await db.select().from(shares).where(eq(shares.shareId, shareId)).limit(1);
   if (!share) return null;
-  const { data: prog } = await supabase
-    .from('progressions')
-    .select('*')
-    .eq('id', share.progression_id)
-    .single();
-  if (!prog || !prog.is_public) return null;
-  // Best-effort view bump (RLS on shares: read-only; writing it requires service role).
+  const [prog] = await db
+    .select()
+    .from(progressions)
+    .where(eq(progressions.id, share.progressionId))
+    .limit(1);
+  if (!prog || !prog.isPublic) return null;
+  // Best-effort view bump.
+  await db
+    .update(shares)
+    .set({ viewCount: share.viewCount + 1 })
+    .where(eq(shares.id, share.id));
   return { share, prog };
 }
 

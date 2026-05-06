@@ -1,31 +1,31 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { and, eq } from 'drizzle-orm';
+import { auth } from '@/lib/auth';
+import { db, isDbConfigured } from '@/lib/db/client';
+import { progressions } from '@/lib/db/schema';
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new NextResponse('Unauthorized', { status: 401 });
+  if (!isDbConfigured()) return new NextResponse('DB not configured', { status: 503 });
+  const session = await auth();
+  if (!session?.user?.id) return new NextResponse('Unauthorized', { status: 401 });
+
   const body = await req.json();
-  const { data, error } = await supabase
-    .from('progressions')
-    .update(body)
-    .eq('id', params.id)
-    .eq('user_id', user.id)
-    .select()
-    .single();
-  if (error) return new NextResponse(error.message, { status: 500 });
-  return NextResponse.json(data);
+  const [updated] = await db
+    .update(progressions)
+    .set({ ...body, updatedAt: new Date() })
+    .where(and(eq(progressions.id, params.id), eq(progressions.userId, session.user.id)))
+    .returning();
+  if (!updated) return new NextResponse('Not found', { status: 404 });
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new NextResponse('Unauthorized', { status: 401 });
-  const { error } = await supabase
-    .from('progressions')
-    .delete()
-    .eq('id', params.id)
-    .eq('user_id', user.id);
-  if (error) return new NextResponse(error.message, { status: 500 });
+  if (!isDbConfigured()) return new NextResponse('DB not configured', { status: 503 });
+  const session = await auth();
+  if (!session?.user?.id) return new NextResponse('Unauthorized', { status: 401 });
+
+  await db
+    .delete(progressions)
+    .where(and(eq(progressions.id, params.id), eq(progressions.userId, session.user.id)));
   return new NextResponse(null, { status: 204 });
 }

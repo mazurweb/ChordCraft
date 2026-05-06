@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { auth } from '@/lib/auth';
+import { db, isDbConfigured } from '@/lib/db/client';
+import { progressions, shares } from '@/lib/db/schema';
 
 const schema = z.object({ progression_id: z.string().uuid() });
 
@@ -12,30 +15,23 @@ function genShareId(): string {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new NextResponse('Unauthorized', { status: 401 });
+  if (!isDbConfigured()) return new NextResponse('DB not configured', { status: 503 });
+  const session = await auth();
+  if (!session?.user?.id) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = schema.safeParse(await req.json());
   if (!body.success) return new NextResponse(body.error.message, { status: 400 });
 
-  // Verify ownership and mark public.
-  const { data: prog, error: getErr } = await supabase
-    .from('progressions')
-    .select('id, user_id')
-    .eq('id', body.data.progression_id)
-    .single();
-  if (getErr || !prog || prog.user_id !== user.id) {
-    return new NextResponse('Not found', { status: 404 });
-  }
-  await supabase.from('progressions').update({ is_public: true }).eq('id', prog.id);
+  const [prog] = await db
+    .select({ id: progressions.id })
+    .from(progressions)
+    .where(and(eq(progressions.id, body.data.progression_id), eq(progressions.userId, session.user.id)))
+    .limit(1);
+  if (!prog) return new NextResponse('Not found', { status: 404 });
 
-  const share_id = genShareId();
-  const { data, error } = await supabase
-    .from('shares')
-    .insert({ progression_id: prog.id, share_id })
-    .select()
-    .single();
-  if (error) return new NextResponse(error.message, { status: 500 });
-  return NextResponse.json(data, { status: 201 });
+  await db.update(progressions).set({ isPublic: true }).where(eq(progressions.id, prog.id));
+
+  const shareId = genShareId();
+  const [created] = await db.insert(shares).values({ progressionId: prog.id, shareId }).returning();
+  return NextResponse.json(created, { status: 201 });
 }

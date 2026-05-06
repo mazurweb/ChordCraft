@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import { eq } from 'drizzle-orm';
+import { db, isDbConfigured } from '@/lib/db/client';
+import { progressions, shares } from '@/lib/db/schema';
 import { ShareableProgressionPlayer } from '@/components/studio/ShareableProgressionPlayer';
 
 interface PageProps {
@@ -7,20 +9,15 @@ interface PageProps {
 }
 
 export default async function EmbedPage({ params }: PageProps) {
-  if (!isSupabaseConfigured()) notFound();
-  const supabase = createClient();
-  const { data: share } = await supabase
-    .from('shares')
-    .select('*')
-    .eq('share_id', params.shareId)
-    .single();
+  if (!isDbConfigured()) notFound();
+  const [share] = await db.select().from(shares).where(eq(shares.shareId, params.shareId)).limit(1);
   if (!share) notFound();
-  const { data: prog } = await supabase
-    .from('progressions')
-    .select('*')
-    .eq('id', share.progression_id)
-    .single();
-  if (!prog || !prog.is_public) notFound();
+  const [prog] = await db
+    .select()
+    .from(progressions)
+    .where(eq(progressions.id, share.progressionId))
+    .limit(1);
+  if (!prog || !prog.isPublic) notFound();
 
   return (
     <div className="p-4">

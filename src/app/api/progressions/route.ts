@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
-
-const FREE_LIMIT = 3;
+import { auth } from '@/lib/auth';
+import { db, isDbConfigured } from '@/lib/db/client';
+import { progressions } from '@/lib/db/schema';
 
 const upsertSchema = z.object({
   name: z.string().min(1).max(100),
@@ -16,61 +17,40 @@ const upsertSchema = z.object({
 });
 
 export async function GET() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new NextResponse('Unauthorized', { status: 401 });
+  if (!isDbConfigured()) return new NextResponse('DB not configured', { status: 503 });
+  const session = await auth();
+  if (!session?.user?.id) return new NextResponse('Unauthorized', { status: 401 });
 
-  const { data, error } = await supabase
-    .from('progressions')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-  if (error) return new NextResponse(error.message, { status: 500 });
-  return NextResponse.json(data);
+  const rows = await db
+    .select()
+    .from(progressions)
+    .where(eq(progressions.userId, session.user.id))
+    .orderBy(desc(progressions.createdAt));
+  return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new NextResponse('Unauthorized', { status: 401 });
+  if (!isDbConfigured()) return new NextResponse('DB not configured', { status: 503 });
+  const session = await auth();
+  if (!session?.user?.id) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = upsertSchema.safeParse(await req.json());
   if (!body.success) return new NextResponse(body.error.message, { status: 400 });
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.plan === 'free') {
-    const { count } = await supabase
-      .from('progressions')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id);
-    if ((count ?? 0) >= FREE_LIMIT) {
-      return new NextResponse('Free plan is limited to 3 saved progressions. Upgrade to Pro for unlimited.', {
-        status: 402,
-      });
-    }
-  }
-
   const { name, genre, key, scale, bpm, chords, roman, is_public } = body.data;
-  const { data, error } = await supabase
-    .from('progressions')
-    .insert({
-      user_id: user.id,
+  const [created] = await db
+    .insert(progressions)
+    .values({
+      userId: session.user.id,
       name,
       genre,
       key,
       scale,
       bpm,
       chords: { chords, roman },
-      is_public: !!is_public,
+      isPublic: !!is_public,
     })
-    .select()
-    .single();
+    .returning();
 
-  if (error) return new NextResponse(error.message, { status: 500 });
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(created, { status: 201 });
 }
